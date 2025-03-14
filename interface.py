@@ -40,29 +40,13 @@ def adjust_contrast_brightness(*args):
     contrast = contrast_var.get() / 50
     brightness = brightness_var.get()
 
-    # Always apply to the original thresholded image or denoised image (Not to adjusted_img_cv)
-    current_image = thresh_img_cv if adjusted_img_cv is None else adjusted_img_cv
+    # Always apply to the original thresholded image
+    adjusted_img_cv = cv2.convertScaleAbs(thresh_img_cv, alpha=contrast, beta=brightness)
 
-    # Apply contrast and brightness
-    adjusted_image = cv2.convertScaleAbs(current_image, alpha=contrast, beta=brightness)
-
-    update_display(adjusted_image, panel2)
+    update_display(adjusted_img_cv, panel2)
 
 
-def denoise_image():
-    global adjusted_img_cv, thresh_img_cv
 
-    if thresh_img_cv is None:
-        messagebox.showerror("Error", "No image to denoise!")
-        return
-
-    # Denoise the thresholded image
-    denoised_img = cv2.fastNlMeansDenoising(thresh_img_cv, None, 30, 7, 21)
-
-    # Store the denoised image as the new 'original'
-    adjusted_img_cv = denoised_img
-
-    update_display(denoised_img, panel2)
 
 def update_display(image, panel):
     img_pil = Image.fromarray(image)
@@ -113,9 +97,6 @@ contrast_slider.pack(pady=5)
 
 brightness_slider = tk.Scale(root, from_=0, to=100, orient="horizontal", label="Brightness", length=300, variable=brightness_var, bg="#e0f7fa", fg="#00796b")
 brightness_slider.pack(pady=5)
-
-btn_denoise = tk.Button(root, text="Denoise Image", command=denoise_image, bg="#2196f3", fg="white", padx=10, pady=5, font=("Helvetica", 10, "bold"))
-btn_denoise.pack(pady=5)
 
 btn_save = tk.Button(root, text="Save Image", command=save_image, bg="#2196f3", fg="white", padx=10, pady=5, font=("Helvetica", 10, "bold"))
 btn_save.pack(pady=5)
