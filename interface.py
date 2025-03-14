@@ -9,7 +9,6 @@ thresh_img_cv = None
 adjusted_img_cv = None 
 
 def upload_image():
-    """Upload an image, convert it to grayscale, and display it."""
     global img_cv, thresh_img_cv, adjusted_img_cv
     file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.bmp")])
     
@@ -20,7 +19,6 @@ def upload_image():
         update_display(img_cv, panel1)  
 
 def apply_threshold():
-    """Apply thresholding and update the output panel."""
     global img_cv, thresh_img_cv, adjusted_img_cv
     if img_cv is None:
         messagebox.showerror("Error", "Please upload an image first!")
@@ -34,20 +32,39 @@ def apply_threshold():
     adjust_contrast_brightness() 
 
 def adjust_contrast_brightness(*args):
-    """Adjust contrast and brightness of the thresholded image in real-time."""
     global thresh_img_cv, adjusted_img_cv
+
     if thresh_img_cv is None:
         return 
 
-    contrast = contrast_var.get()/50   
-    brightness = brightness_var.get()  
+    contrast = contrast_var.get() / 50
+    brightness = brightness_var.get()
 
-    adjusted_img_cv = cv2.convertScaleAbs(thresh_img_cv, alpha=contrast, beta=brightness)
+    # Always apply to the original thresholded image or denoised image (Not to adjusted_img_cv)
+    current_image = thresh_img_cv if adjusted_img_cv is None else adjusted_img_cv
 
-    update_display(adjusted_img_cv, panel2)  
+    # Apply contrast and brightness
+    adjusted_image = cv2.convertScaleAbs(current_image, alpha=contrast, beta=brightness)
+
+    update_display(adjusted_image, panel2)
+
+
+def denoise_image():
+    global adjusted_img_cv, thresh_img_cv
+
+    if thresh_img_cv is None:
+        messagebox.showerror("Error", "No image to denoise!")
+        return
+
+    # Denoise the thresholded image
+    denoised_img = cv2.fastNlMeansDenoising(thresh_img_cv, None, 30, 7, 21)
+
+    # Store the denoised image as the new 'original'
+    adjusted_img_cv = denoised_img
+
+    update_display(denoised_img, panel2)
 
 def update_display(image, panel):
-    """Update a Tkinter display panel with the given image."""
     img_pil = Image.fromarray(image)
     img_pil = img_pil.resize((300, 300)) 
     img_tk = ImageTk.PhotoImage(img_pil)
@@ -55,12 +72,11 @@ def update_display(image, panel):
     panel.image = img_tk
 
 def save_image():
-    """Save the contrast and brightness adjusted image."""
     global adjusted_img_cv
     if adjusted_img_cv is None:
         messagebox.showerror("Error", "No processed image to save!")
         return
-    
+
     file_path = filedialog.asksaveasfilename(defaultextension=".png",
                                              filetypes=[("PNG files", "*.png"),
                                                         ("JPEG files", "*.jpg"),
@@ -71,34 +87,40 @@ def save_image():
 
 root = tk.Tk()
 root.title("Thresholding & Adjustment App")
-root.geometry("400x600")  # Adjust window size
+root.geometry("800x500")
+root.config(bg="#e0f7fa")
 
-btn_upload = tk.Button(root, text="Upload Image", command=upload_image)
-btn_upload.pack()
+frame = tk.Frame(root, bg="#e0f7fa")
+frame.pack(pady=20)
 
-btn_threshold = tk.Button(root, text="Apply Threshold", command=apply_threshold)
-btn_threshold.pack()
+panel1 = tk.Label(frame, text="Original Image", bg="#e0f7fa", fg="#00796b", font=("Helvetica", 12, "bold"))
+panel1.grid(row=0, column=0, padx=20)
 
-panel1 = tk.Label(root, text="Original Image")
-panel1.pack()
+panel2 = tk.Label(frame, text="Output Image", bg="#e0f7fa", fg="#00796b", font=("Helvetica", 12, "bold"))
+panel2.grid(row=0, column=1, padx=20)
 
-panel2 = tk.Label(root, text="Output Image")  
-panel2.pack()
+btn_upload = tk.Button(root, text="Upload Image", command=upload_image, bg="#4caf50", fg="white", padx=10, pady=5, font=("Helvetica", 10, "bold"))
+btn_upload.pack(pady=5)
+
+btn_threshold = tk.Button(root, text="Apply Threshold", command=apply_threshold, bg="#4caf50", fg="white", padx=10, pady=5, font=("Helvetica", 10, "bold"))
+btn_threshold.pack(pady=5)
 
 contrast_var = tk.IntVar(value=50) 
 brightness_var = tk.IntVar(value=50) 
 
-contrast_slider = tk.Scale(root, from_=10, to=200, orient="horizontal", label="Contrast", length=300, variable=contrast_var)
-contrast_slider.pack()
+contrast_slider = tk.Scale(root, from_=10, to=200, orient="horizontal", label="Contrast", length=300, variable=contrast_var, bg="#e0f7fa", fg="#00796b")
+contrast_slider.pack(pady=5)
 
-brightness_slider = tk.Scale(root, from_=0, to=100, orient="horizontal", label="Brightness", length=300, variable=brightness_var)
-brightness_slider.pack()
+brightness_slider = tk.Scale(root, from_=0, to=100, orient="horizontal", label="Brightness", length=300, variable=brightness_var, bg="#e0f7fa", fg="#00796b")
+brightness_slider.pack(pady=5)
+
+btn_denoise = tk.Button(root, text="Denoise Image", command=denoise_image, bg="#2196f3", fg="white", padx=10, pady=5, font=("Helvetica", 10, "bold"))
+btn_denoise.pack(pady=5)
+
+btn_save = tk.Button(root, text="Save Image", command=save_image, bg="#2196f3", fg="white", padx=10, pady=5, font=("Helvetica", 10, "bold"))
+btn_save.pack(pady=5)
 
 contrast_var.trace_add("write", adjust_contrast_brightness)
 brightness_var.trace_add("write", adjust_contrast_brightness)
-
-# Save Button
-btn_save = tk.Button(root, text="Save Image", command=save_image)
-btn_save.pack()
 
 root.mainloop()
